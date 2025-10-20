@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="crimson-noir">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - ConnectSphere</title>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        :root {
+            --ease-2: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+            --transition-speed: 0.4s;
+        }
+
+        /* Using a subset of themes for the admin panel, can be expanded */
+        [data-theme="crimson-noir"] { --bg: radial-gradient(circle, #414141, #1d1d1d); --card-bg: rgba(10, 0, 0, 0.3); --card-border: rgba(220, 20, 60, 0.2); --card-glow: rgba(220, 20, 60, 0.15); --text: #f5f5f5; --text-muted: #a1a1a1; --accent: #dc143c; --btn-bg: linear-gradient(135deg, #dc143c 0%, #b22222 100%); --btn-text: #ffffff; --btn-shadow: rgba(220, 20, 60, 0.4); }
+        [data-theme="oled-black"] { --bg: #000000; --card-bg: rgba(5, 5, 5, 0.25); --card-border: rgba(255, 255, 255, 0.1); --card-glow: rgba(168, 85, 247, 0.1); --text: #e0e0e0; --text-muted: #888888; --accent: #a855f7; --btn-bg: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); --btn-text: #ffffff; --btn-shadow: rgba(100, 100, 255, 0.4); }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background var(--transition-speed) var(--ease-2);
+        }
+        .admin-container {
+            display: flex;
+            flex-direction: column;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .admin-header h1 { font-size: 2.5rem; }
+        #logout-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            color: var(--text);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.2s;
+        }
+        #logout-btn:hover { background: rgba(255,255,255,0.1); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .stat-card h3 { color: var(--text-muted); font-size: 1rem; margin-bottom: 0.5rem; }
+        .stat-card .value { font-size: 2.5rem; font-weight: 700; color: var(--accent); }
+
+        .main-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        #user-search {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            padding: 0.6rem 1rem;
+            color: var(--text);
+            width: 300px;
+        }
+        
+        .user-table-wrapper { overflow-x: auto; }
+        .user-table { width: 100%; border-collapse: collapse; }
+        .user-table th, .user-table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--card-border); }
+        .user-table th { color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; }
+        .user-table td { font-family: 'SF Mono', 'Menlo', monospace; font-size: 0.95rem; }
+        .user-table .hash {
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: var(--text-muted);
+        }
+        .user-table .action-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--card-border);
+            color: var(--text);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .user-table .action-btn:hover { background: rgba(255,255,255,0.2); }
+        
+        .error-message {
+            text-align: center;
+            padding: 2rem;
+            background: rgba(220, 20, 60, 0.2);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            font-size: 1.2rem;
+            display: none; /* Hidden by default */
+        }
+        
+        /* --- NEW MODAL STYLES --- */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 { font-size: 1.2rem; }
+        .modal-close-btn { background: none; border: none; color: var(--text); cursor: pointer; }
+        .modal-body { padding: 1.5rem; overflow-y: auto; }
+
+        #chats-list li {
+            padding: 1rem;
+            border-bottom: 1px solid var(--card-border);
+            cursor: pointer;
+            list-style: none;
+        }
+        #chats-list li:hover { background: rgba(255,255,255,0.1); }
+        #chats-list li:last-child { border-bottom: none; }
+        
+        .chat-message { padding: 0.5rem 1rem; border-radius: 12px; margin-bottom: 0.5rem; max-width: 80%; word-wrap: break-word; }
+        .chat-message.sent { background: rgba(80,80,80,0.3); align-self: flex-end; text-align: right; }
+        .chat-message.received { background: rgba(50,50,50,0.3); align-self: flex-start; }
+        .chat-message .sender { font-weight: 600; font-size: 0.8rem; color: var(--accent); margin-bottom: 0.25rem; }
+    </style>
+</head>
+<body>
+
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>Admin Dashboard</h1>
+            <button id="logout-btn"><i data-feather="log-out"></i>Logout</button>
+        </div>
+        
+        <div class="error-message" id="error-message"></div>
+
+        <div id="dashboard-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <p class="value" id="total-users">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Messages</h3>
+                    <p class="value" id="total-messages">0</p>
+                </div>
+            </div>
+
+            <div class="main-panel">
+                <div class="panel-header">
+                    <h2>Registered Users</h2>
+                    <input type="text" id="user-search" placeholder="Search by email or User ID...">
+                </div>
+                <div class="user-table-wrapper">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Email</th>
+                                <th>Password Hash (Secure)</th>
+                                <th>Joined On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body">
+                            <!-- User rows will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conversations List Modal -->
+    <div class="modal-overlay" id="chats-list-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="chats-list-title">Conversations</h2>
+                <button class="modal-close-btn"><i data-feather="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <ul id="chats-list"></ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conversation View Modal -->
+    <div class="modal-overlay" id="chat-view-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="chat-view-title">Chat History</h2>
+                <button class="modal-close-btn"><i data-feather="x"></i></button>
+            </div>
+            <div class="modal-body" id="chat-view-body" style="display: flex; flex-direction: column;">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        feather.replace();
+
+        // --- AUTH & CONFIG ---
+        const API_URL = 'http://127.0.0.1:5000';
+        const TOKEN = localStorage.getItem('authToken');
+        if (!TOKEN) {
+            window.location.href = 'login.html'; 
+        }
+
+        // --- DOM ELEMENTS ---
+        const htmlEl = document.documentElement;
+        const totalUsersEl = document.getElementById('total-users');
+        const totalMessagesEl = document.getElementById('total-messages');
+        const userTableBody = document.getElementById('user-table-body');
+        const userSearchInput = document.getElementById('user-search');
+        const logoutBtn = document.getElementById('logout-btn');
+        const errorMessageEl = document.getElementById('error-message');
+        const dashboardContent = document.getElementById('dashboard-content');
+        
+        const chatsListModal = document.getElementById('chats-list-modal');
+        const chatViewModal = document.getElementById('chat-view-modal');
+        const chatsListTitle = document.getElementById('chats-list-title');
+        const chatsList = document.getElementById('chats-list');
+        const chatViewTitle = document.getElementById('chat-view-title');
+        const chatViewBody = document.getElementById('chat-view-body');
+        
+        let allUsersData = [];
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'crimson-noir';
+            htmlEl.dataset.theme = savedTheme;
+            fetchAdminData();
+            setupModalEventListeners();
+        });
+
+        // --- DATA FETCHING ---
+        async function fetchAdminData() {
+            try {
+                const response = await fetch(`${API_URL}/admin/data`, {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${TOKEN}` }
+                });
+
+                if (response.status === 401 || response.status === 403) {
+                    showError("Access Denied. You must be an admin to view this page.");
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                populateDashboard(data);
+
+            } catch (error) {
+                console.error("Error fetching admin data:", error);
+                showError("Could not connect to the server or fetch admin data.");
+            }
+        }
+
+        function showError(message) {
+            dashboardContent.style.display = 'none';
+            errorMessageEl.textContent = message;
+            errorMessageEl.style.display = 'block';
+        }
+
+        // --- UI RENDERING ---
+        function populateDashboard(data) {
+            totalUsersEl.textContent = data.stats.total_users;
+            totalMessagesEl.textContent = data.stats.total_messages;
+            allUsersData = data.users;
+            renderUserTable(allUsersData);
+        }
+
+        function renderUserTable(users) {
+            userTableBody.innerHTML = '';
+            if (users.length === 0) {
+                userTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 2rem;">No users found.</td></tr>';
+                return;
+            }
+            
+            users.forEach(user => {
+                const joinedDate = new Date(user.created_at * 1000).toLocaleDateString();
+                const row = `
+                    <tr>
+                        <td>${user.user_id}</td>
+                        <td>${user.email}</td>
+                        <td>
+                            <div class="hash" title="${user.password_hash || 'N/A'}">
+                                ${user.password_hash ? user.password_hash.substring(0, 20) + '...' : 'Not Set'}
+                            </div>
+                        </td>
+                        <td>${joinedDate}</td>
+                        <td>
+                            <button class="action-btn" onclick="viewUserChats('${user.user_id}')">View Chats</button>
+                        </td>
+                    </tr>
+                `;
+                userTableBody.innerHTML += row;
+            });
+        }
+        
+        // --- NEW CHAT VIEWING LOGIC ---
+        async function viewUserChats(userId) {
+            chatsListTitle.textContent = `Conversations for ${userId}`;
+            chatsList.innerHTML = '<li>Loading...</li>';
+            chatsListModal.style.display = 'flex';
+
+            try {
+                const response = await fetch(`${API_URL}/admin/chats/${userId}`, {
+                    headers: { 'Authorization': `Bearer ${TOKEN}` }
+                });
+                if (!response.ok) throw new Error('Failed to fetch conversations.');
+                
+                const conversations = await response.json();
+                chatsList.innerHTML = '';
+
+                if (conversations.length === 0) {
+                    chatsList.innerHTML = '<li style="cursor: default;">No conversations found.</li>';
+                    return;
+                }
+
+                conversations.forEach(partner => {
+                    const li = document.createElement('li');
+                    li.textContent = `Chat with ${partner.name || partner.userId}`;
+                    li.onclick = () => viewConversation(userId, partner.userId);
+                    chatsList.appendChild(li);
+                });
+
+            } catch(error) {
+                console.error(error);
+                chatsList.innerHTML = `<li style="color: #f87171;">${error.message}</li>`;
+            }
+        }
+
+        async function viewConversation(user1Id, user2Id) {
+            chatViewTitle.textContent = `History: ${user1Id} & ${user2Id}`;
+            chatViewBody.innerHTML = 'Loading messages...';
+            chatsListModal.style.display = 'none';
+            chatViewModal.style.display = 'flex';
+
+            try {
+                const response = await fetch(`${API_URL}/admin/conversation/${user1Id}/${user2Id}`, {
+                    headers: { 'Authorization': `Bearer ${TOKEN}` }
+                });
+                if (!response.ok) throw new Error('Failed to fetch chat history.');
+
+                const messages = await response.json();
+                chatViewBody.innerHTML = '';
+
+                if(messages.length === 0) {
+                    chatViewBody.innerHTML = '<p>No messages in this conversation.</p>';
+                    return;
+                }
+
+                messages.forEach(msg => {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = 'chat-message';
+                    
+                    // Style based on perspective of user1Id
+                    const perspectiveClass = msg.sender === user1Id ? 'sent' : 'received';
+                    msgDiv.classList.add(perspectiveClass);
+
+                    const senderP = document.createElement('p');
+                    senderP.className = 'sender';
+                    senderP.textContent = msg.sender;
+                    
+                    const contentP = document.createElement('p');
+                    contentP.textContent = msg.content;
+                    
+                    msgDiv.appendChild(senderP);
+                    msgDiv.appendChild(contentP);
+                    chatViewBody.appendChild(msgDiv);
+                });
+
+            } catch(error) {
+                console.error(error);
+                chatViewBody.innerHTML = `<p style="color: #f87171;">${error.message}</p>`;
+            }
+        }
+
+        
+        // --- EVENT LISTENERS ---
+        userSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredUsers = allUsersData.filter(user => 
+                user.user_id.toLowerCase().includes(searchTerm) || 
+                user.email.toLowerCase().includes(searchTerm)
+            );
+            renderUserTable(filteredUsers);
+        });
+        
+        logoutBtn.addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        });
+
+        function setupModalEventListeners() {
+            const modals = document.querySelectorAll('.modal-overlay');
+            modals.forEach(modal => {
+                const closeBtn = modal.querySelector('.modal-close-btn');
+                closeBtn.addEventListener('click', () => {
+                    modal.style.display = 'none';
+                });
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cyberpunk-neon">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Nexus</title>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        :root {
+            --ease-1: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --ease-2: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+        }
+        /* All 8 themes are included for consistency */
+        [data-theme="cyberpunk-neon"] { --bg: #0d0221; --card-bg: rgba(26, 12, 51, 0.3); --card-border: rgba(240, 50, 255, 0.2); --text: #e0e1ff; --text-muted: #a39fc4; --accent: #f0f; --btn-bg: linear-gradient(135deg, #f0f 0%, #0ff 100%); --btn-text: #0d0221; --btn-shadow: rgba(0, 255, 255, 0.4); }
+        [data-theme="solaris-orange"] { --bg: linear-gradient(to bottom right, #ffecd2, #fcb69f); --card-bg: rgba(255, 255, 255, 0.35); --card-border: rgba(255, 255, 255, 0.6); --text: #5c3c31; --text-muted: #8a6a5f; --accent: #ff8c42; --btn-bg: linear-gradient(135deg, #ff8c42 0%, #ff5c5c 100%); --btn-text: #ffffff; --btn-shadow: rgba(255, 92, 92, 0.5); }
+        [data-theme="emerald-grove"] { --bg: linear-gradient(to top left, #0f2027, #203a43, #2c5364); --card-bg: rgba(20, 40, 45, 0.5); --card-border: rgba(218, 165, 32, 0.2); --text: #e8e8e8; --text-muted: #b0b0b0; --accent: #daa520; --btn-bg: linear-gradient(135deg, #daa520 0%, #b8860b 100%); --btn-text: #0f2027; --btn-shadow: rgba(218, 165, 32, 0.4); }
+        [data-theme="aquawave"] { --bg: linear-gradient(120deg, #1cb5e0 0%, #000851 100%); --card-bg: rgba(255, 255, 255, 0.1); --card-border: rgba(255, 255, 255, 0.2); --text: #ffffff; --text-muted: #c0d5e0; --accent: #1de2d3; --btn-bg: linear-gradient(135deg, #1de2d3 0%, #1cb5e0 100%); --btn-text: #000851; --btn-shadow: rgba(29, 226, 211, 0.4); }
+        [data-theme="rose-quartz"] { --bg: #f7f0f5; --card-bg: rgba(255, 255, 255, 0.6); --card-border: rgba(230, 164, 180, 0.4); --text: #5c3a47; --text-muted: #8c737c; --accent: #e6a4b4; --btn-bg: linear-gradient(135deg, #e6a4b4 0%, #d18ca3 100%); --btn-text: #ffffff; --btn-shadow: rgba(209, 140, 163, 0.5); }
+        [data-theme="crimson-noir"] { --bg: radial-gradient(circle, #414141, #1d1d1d); --card-bg: rgba(10, 0, 0, 0.3); --card-border: rgba(220, 20, 60, 0.2); --text: #f5f5f5; --text-muted: #a1a1a1; --accent: #dc143c; --btn-bg: linear-gradient(135deg, #dc143c 0%, #b22222 100%); --btn-text: #ffffff; --btn-shadow: rgba(220, 20, 60, 0.4); }
+        [data-theme="cosmic-latte"] { --bg: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop') no-repeat center center / cover; --card-bg: rgba(15, 15, 25, 0.2); --card-border: rgba(255, 255, 255, 0.2); --text: #f0eefc; --text-muted: #a097b8; --accent: #c084fc; --btn-bg: linear-gradient(135deg, #c084fc 0%, #818cf8 100%); --btn-text: #110d1f; --btn-shadow: rgba(192, 132, 252, 0.4); }
+        [data-theme="oled-black"] { --bg: #000000; --card-bg: rgba(5, 5, 5, 0.25); --card-border: rgba(255, 255, 255, 0.1); --text: #e0e0e0; --text-muted: #888888; --accent: #a855f7; --btn-bg: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); --btn-text: #ffffff; --btn-shadow: rgba(100, 100, 255, 0.4); }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; color: var(--text); background: var(--bg); overflow: hidden; perspective: 1000px; }
+        .auth-container { width: 100%; max-width: 420px; padding: 2.75rem; border-radius: 24px; background: var(--card-bg); border: 1px solid var(--card-border); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 16px 40px rgba(0,0,0,0.2); will-change: transform; transition: transform 0.1s var(--ease-1), box-shadow 0.3s var(--ease-2); }
+        .auth-container h1 { margin: 0 0 1.5rem 0; text-align: center; font-weight: 800; color: var(--text); }
+        .auth-form-group { margin-bottom: 1.25rem; }
+        .auth-form-group label { display: block; margin-bottom: .6rem; color: var(--text-muted); font-weight: 600; font-size: 0.9rem; }
+        .auth-form-group input { width: 100%; padding: 1rem 1.05rem; border-radius: 12px; border: 1px solid var(--card-border); background: rgba(0,0,0,0.1); color: var(--text); outline: 2px solid transparent; font-size: 1rem; transition: all .2s var(--ease-1); }
+        .auth-form-group input::placeholder { color: var(--text-muted); opacity: 0.8; }
+        .auth-form-group input:hover { border-color: var(--accent); }
+        .auth-form-group input:focus { border-color: var(--accent); box-shadow: 0 0 16px 0 rgba(168, 85, 247, 0.2); }
+        .auth-button { width: 100%; padding: 1.05rem; border: none; border-radius: 12px; background: var(--btn-bg); color: var(--btn-text); font-size: 1rem; font-weight: 700; cursor: pointer; transition: all .2s var(--ease-1); box-shadow: 0 6px 18px -4px var(--btn-shadow); }
+        .auth-button:hover { filter: brightness(1.1); transform: translateY(-3px); box-shadow: 0 10px 22px -4px var(--btn-shadow); }
+        .auth-button:active { transform: translateY(0px) scale(0.98); filter: brightness(0.95); }
+        .message-area { text-align: center; margin-top: 1.15rem; font-size: .96rem; min-height: 1.25rem; font-weight: 500; }
+        .message-area.success { color: #34d399; }
+        .message-area.error { color: #f87171; }
+        .auth-link { text-align: center; margin-top: 1.5rem; font-size: .96rem; color: var(--text-muted); }
+        .auth-link a { color: var(--text); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 2px; transition: all .14s ease; }
+        .auth-link a:hover { color: var(--accent); border-color: var(--accent); }
+        .theme-selector { position: absolute; top: 20px; left: 20px; font-size: 1.5rem; cursor: pointer; z-index: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+    </style>
+</head>
+<body>
+
+    <div class="theme-selector" id="theme-selector" title="Change Theme">🔮</div>
+
+    <div class="auth-container">
+        <h1>Welcome Back</h1>
+        <form id="login-form">
+            <div class="auth-form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required placeholder="you@example.com">
+            </div>
+            <div class="auth-form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="auth-button">Login</button>
+        </form>
+        <div id="message-area" class="message-area"></div>
+        <div class="auth-link">
+            Don't have an account? <a href="signup.html">Sign up</a>
+        </div>
+    </div>
+
+    <script>
+        // --- THEME & UI LOGIC ---
+        const THEMES = ["cyberpunk-neon", "solaris-orange", "emerald-grove", "aquawave", "rose-quartz", "crimson-noir", "cosmic-latte", "oled-black"];
+        let currentThemeIndex = 0;
+        const themeSelector = document.getElementById('theme-selector');
+        const htmlEl = document.documentElement;
+
+        function changeTheme() {
+            currentThemeIndex = (currentThemeIndex + 1) % THEMES.length;
+            htmlEl.dataset.theme = THEMES[currentThemeIndex];
+        }
+        themeSelector.addEventListener('click', changeTheme);
+
+        const container = document.querySelector('.auth-container');
+        container.addEventListener('mousemove', (e) => {
+            const { left, top, width, height } = container.getBoundingClientRect();
+            const x = (e.clientX - left) / width - 0.5;
+            const y = (e.clientY - top) / height - 0.5;
+            const rotateY = x * 15;
+            const rotateX = -y * 15;
+            container.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.05)`;
+        });
+        container.addEventListener('mouseleave', () => {
+            container.style.transform = 'rotateX(0deg) rotateY(0deg) scale(1)';
+        });
+
+        // --- LOGIN LOGIC ---
+        const loginForm = document.getElementById('login-form');
+        const messageArea = document.getElementById('message-area');
+        const API_URL = ''; // Your Flask server URL
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = e.target.email.value;
+            const password = e.target.password.value;
+            
+            messageArea.textContent = '';
+            messageArea.className = 'message-area';
+
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    messageArea.textContent = data.message || 'Login Successful!';
+                    messageArea.classList.add('success');
+
+                    // --- FIX IS HERE ---
+                    // This section ensures all necessary data, including the userId, is saved.
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('userId', data.userId); // Save the unique user ID
+                    localStorage.setItem('userEmail', data.email);
+                    localStorage.setItem('isAdmin', data.isAdmin);
+
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        if (data.isAdmin) {
+                            window.location.href = 'admin.html';
+                        } else {
+                            window.location.href = 'index.html';
+                        }
+                    }, 1500);
+                } else {
+                    messageArea.textContent = data.error || 'An error occurred.';
+                    messageArea.classList.add('error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                messageArea.textContent = 'Could not connect to the server.';
+                messageArea.classList.add('error');
+            }
+        });
+    </script>
+</body>
+</html>
+

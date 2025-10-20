@@ -1,0 +1,830 @@
+
+import speech_recognition as sr
+import pyttsx3
+import os
+import webbrowser
+import winsound
+import pyautogui
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+import time
+from datetime import datetime
+import threading
+import psutil
+import pyperclip
+import wikipedia
+import requests
+import re
+import random
+import subprocess
+import pygetwindow as gw
+import google.generativeai as genai  # New Gemini import
+import json
+import time
+import ctypes
+from ctypes import wintypes
+from pynput import mouse, keyboard
+from pynput.keyboard import Key, Controller as KeyboardController
+
+
+
+# Initialize TTS engine
+lock = threading.Lock()
+engine = pyttsx3.init()
+engine.setProperty('rate', 150)
+engine.setProperty('volume', 1)
+user32 = ctypes.WinDLL('user32')
+shcore = ctypes.WinDLL('shcore')
+shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE
+
+
+# Add these event handler functions BEFORE the listener initialization
+def on_move(x, y):
+    if recording:
+        with lock:
+            physical_pos = get_physical_pos()
+            recorded_events.append({
+                'type': 'move',
+                'position': physical_pos,
+                'time': time.time() - recording_start_time
+            })
+
+def on_click(x, y, button, pressed):
+    if recording:
+        with lock:
+            physical_pos = get_physical_pos()
+            recorded_events.append({
+                'type': 'click',
+                'position': physical_pos,
+                'button': str(button),
+                'pressed': pressed,
+                'time': time.time() - recording_start_time
+            })
+
+def on_scroll(x, y, dx, dy):
+    if recording:
+        with lock:
+            physical_pos = get_physical_pos()
+            recorded_events.append({
+                'type': 'scroll',
+                'position': physical_pos,
+                'dx': dx,
+                'dy': dy,
+                'time': time.time() - recording_start_time
+            })
+
+def on_press(key):
+    if recording:
+        with lock:
+            recorded_events.append({
+                'type': 'key_press',
+                'key': key_to_dict(key),
+                'time': time.time() - recording_start_time
+            })
+
+def on_release(key):
+    if recording:
+        with lock:
+            recorded_events.append({
+                'type': 'key_release',
+                'key': key_to_dict(key),
+                'time': time.time() - recording_start_time
+            })
+
+GetPhysicalCursorPos = user32.GetPhysicalCursorPos
+GetPhysicalCursorPos.argtypes = [ctypes.POINTER(wintypes.POINT)]
+GetPhysicalCursorPos.restype = wintypes.BOOL
+
+SetPhysicalCursorPos = user32.SetPhysicalCursorPos
+SetPhysicalCursorPos.argtypes = [wintypes.INT, wintypes.INT]
+SetPhysicalCursorPos.restype = wintypes.BOOL
+
+mouse_listener = mouse.Listener(on_move=on_move, on_click=on_click, on_scroll=on_scroll)
+mouse_listener.start()
+
+keyboard_listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+keyboard_listener.start()
+# Add these global variables with others
+recording = False
+executing = False
+recorded_events = []
+recording_start_time = None
+initial_recording_position = None
+record_file = "mouse_keyboard_record.json"
+
+# Configure Gemini AI
+genai.configure(api_key='AIzaSyCIOYh1ZNOj2tx3cWEvfS8sXvbCzxGGsFc')  # Your API key
+gemini_model = genai.GenerativeModel('gemini-pro')  # Initialize model
+
+# Find Chrome path
+CHROME_PATHS = [
+    "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+    "C:/Program Files/Google/Chrome/Application/chrome.exe"
+]
+CHROME = next((path for path in CHROME_PATHS if os.path.exists(path)), None)
+
+# Command history
+history = []
+
+# Core recognizer and mic
+recognizer = sr.Recognizer()
+mic = sr.Microphone()
+
+# Helper functions
+# Add these helper functions
+def get_physical_pos():
+    pt = wintypes.POINT()
+    if GetPhysicalCursorPos(ctypes.byref(pt)):
+        return (pt.x, pt.y)
+    return None
+
+def key_to_dict(key):
+    try:
+        if isinstance(key, Key):
+            return {'type': 'Key', 'name': key.name}
+        elif isinstance(key, keyboard.KeyCode):
+            return {'type': 'KeyCode', 'char': key.char, 'vk': key.vk}
+    except AttributeError:
+        return None
+
+def dict_to_key(key_dict):
+    if key_dict is None:
+        return None
+    if key_dict['type'] == 'Key':
+        return getattr(Key, key_dict['name'])
+    elif key_dict['type'] == 'KeyCode':
+        return keyboard.KeyCode(vk=key_dict['vk'], char=key_dict.get('char'))
+    return None
+
+def speak(text):
+    print(f"Friday: {text}")
+    engine.say(text)
+    engine.runAndWait()
+
+def unrecognized():
+    speak("Sorry")
+
+def show_commands():
+    speak("Here are the commands I support:")
+    for cmd in sorted(COMMANDS):
+        print(f" - {cmd}")
+    print(" - close <application>")
+    print(" - close this")
+    print(" - gemini/chat mode/ai mode")  # Added Gemini commands
+    speak("End of command list.")
+
+def listen():
+    with mic as source:
+        print("Listening...")
+        audio = recognizer.listen(source)
+    try:
+        cmd = recognizer.recognize_google(audio).lower().strip()
+        print(f"Heard: {cmd}")
+        history.append(cmd)
+        return cmd
+    except sr.UnknownValueError:
+        return ""
+    except Exception as e:
+        print(f"Error: {e}")
+        return ""
+
+def start_gemini():  # New Gemini chat function
+    speak("Entering Gemini AI mode. Ask me anything! Say 'exit gemini' to return.")
+    chat = gemini_model.start_chat(history=[])
+    
+    while True:
+        with mic as source:
+            print("Gemini listening...")
+            try:
+                audio = recognizer.listen(source, timeout=5)
+            except sr.WaitTimeoutError:
+                continue
+        
+        try:
+            query = recognizer.recognize_google(audio).lower().strip()
+            print(f"Gemini Query: {query}")
+            
+            if 'exit gemini' in query or 'go back' in query:
+                speak("Exiting Gemini mode.")
+                return True
+                
+            # Get response from Gemini
+            response = chat.send_message(query)
+            cleaned_response = response.text.replace("*", "")  # Remove markdown
+            speak(cleaned_response)
+            
+        except sr.UnknownValueError:
+            speak("Could you repeat that?")
+        except Exception as e:
+            print(f"Gemini error: {e}")
+            speak("Sorry, I encountered an error.")
+
+def start_typing():
+    speak("Entering typing mode")
+    typing_commands = {
+        'delete that': lambda: pyautogui.press('backspace'),
+        'delete word': lambda: pyautogui.hotkey('ctrl', 'backspace'),
+        'select this line': lambda: pyautogui.hotkey('ctrl', 'shift', 'up'),
+        'select all': lambda: pyautogui.hotkey('ctrl', 'a'),
+        'bold': lambda: pyautogui.hotkey('ctrl', 'b'),
+        'italic': lambda: pyautogui.hotkey('ctrl', 'i'),
+        'underline': lambda: pyautogui.hotkey('ctrl', 'u'),
+        'centre align': lambda: pyautogui.hotkey('ctrl', 'e'),
+        'right align': lambda: pyautogui.hotkey('ctrl', 'r'),
+        'left align': lambda: pyautogui.hotkey('ctrl', 'l'),
+        'increase font size': lambda: pyautogui.hotkey('ctrl', 'shift', '>'),
+        'decrease font size': lambda: pyautogui.hotkey('ctrl', 'shift', '<'),
+        'new line': lambda: pyautogui.press('shift','enter'),
+        'tab': lambda: pyautogui.press('tab'),
+        'enter': lambda: pyautogui.hotkey('enter')
+        
+    }
+    sorted_commands = sorted(typing_commands.keys(), key=lambda x: len(x), reverse=True)
+    
+    while True:
+        with mic as source:
+            print("Listening for typing...")
+            try:
+                audio = recognizer.listen(source, timeout=3)
+            except sr.WaitTimeoutError:
+                continue
+        try:
+            text = recognizer.recognize_google(audio).lower().strip()
+            print(f"Typing: {text}")
+            if text == "stop stop":
+                speak("Exiting typing mode.")
+                return False
+            elif text == "go back":
+                speak("Bye boss, call me when u need me!")
+                return True
+            
+            # Process commands
+            cleaned_text = text
+            for cmd in sorted_commands:
+                pattern = re.compile(r'\b' + re.escape(cmd) + r'\b')
+                matches = pattern.findall(cleaned_text)
+                if matches:
+                    for _ in matches:
+                        typing_commands[cmd]()
+                    cleaned_text = pattern.sub('', cleaned_text)
+            
+            # Type remaining text
+            cleaned_text = ' '.join(cleaned_text.split())
+            if cleaned_text:
+                pyautogui.typewrite(cleaned_text + " ")
+        except sr.UnknownValueError:
+            print("Could not understand audio in typing mode.")
+        except Exception as e:
+            print(f"Error in typing mode: {e}")
+
+def go_back():
+    speak("Bye boss, call me when u need me!")
+
+# Command implementations
+def open_notepad():
+    subprocess.Popen(['notepad.exe'])
+    speak("Notepad opened.")
+
+def open_cmd():
+    os.system("start cmd")
+    speak("Command Prompt opened.")
+
+def open_calc():
+    os.system("calc")
+    speak("Calculator opened.")
+
+def report_time():
+    speak(datetime.now().strftime("The time is %H:%M"))
+
+def report_date():
+    speak(datetime.now().strftime("Today is %B %d, %Y"))
+
+def open_browser():
+    webbrowser.open("https://www.google.com")
+    speak("Browser opened.")
+
+def search_google():
+    speak("What should I search for?")
+    query = listen()
+    if query:
+        webbrowser.open(f"https://www.google.com/search?q={query}")
+        speak(f"Here are the results for {query}.")
+    else:
+        speak("No query provided.")
+
+def weather():
+    webbrowser.open("https://www.google.com/search?q=weather")
+    speak("Displaying weather.")
+
+def wiki_search():
+    speak("What topic?")
+    topic = listen()
+    if not topic:
+        speak("No topic provided.")
+        return
+    try:
+        page = wikipedia.page(topic)
+        webbrowser.open(page.url)
+        speak(f"Opened Wikipedia page for {topic}.")
+    except Exception:
+        speak(f"Could not find Wikipedia page for {topic}.")
+
+def define_word():
+    speak("Which word?")
+    word = listen()
+    if not word:
+        speak("No word provided.")
+        return
+    try:
+        resp = requests.get(f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}").json()
+        definition = resp[0]['meanings'][0]['definitions'][0]['definition']
+        speak(f"Definition of {word}: {definition}")
+    except Exception:
+        speak(f"Definition not found for {word}.")
+
+def calculate():
+    speak("What expression?")
+    expr = listen()
+    if not expr:
+        speak("No expression provided.")
+        return
+    try:
+        if re.fullmatch(r"[0-9+\-*/ ().]+", expr):
+            result = eval(expr)
+            speak(f"Result is {result}.")
+        else:
+            speak("Invalid mathematical expression.")
+    except Exception:
+        speak("Error evaluating the expression.")
+
+def copy_last():
+    if history:
+         temp=history[-1]
+         if temp=="select all" or temp=="select that":
+            pyautogui.hotkey('ctrl','c')
+            speak("copied")
+         
+    else:
+        speak("No history")
+
+
+def copy_that():
+    pyautogui.hotkey('ctrl','c')
+    speak("Copied")
+
+def paste():
+    pyautogui.hotkey('ctrl', 'v')
+    speak("Pasted from clipboard.")
+
+def escape():
+    pyautogui.hotkey('esc')
+    speak("escaped")
+
+def enter():
+    pyautogui.hotkey('enter')
+    speak("!!!!!")
+
+def open_file():
+    speak("Filename?")
+    filename = listen()
+    if filename and os.path.exists(filename):
+        os.startfile(filename)
+        speak(f"Opened file {filename}.")
+    else:
+        speak(f"File {filename} not found.")
+
+def cpu_usage():
+    speak(f"Current CPU usage is {psutil.cpu_percent()} percent.")
+
+def disk_space():
+    speak(f"You have {psutil.disk_usage('/').free//(1024**3)} GB free.")
+
+def set_timer():
+    speak("For how many seconds?")
+    s = listen()
+    try:
+        sec = int(re.search(r"\d+", s).group())
+        def timer_done():
+            time.sleep(sec)
+            winsound.Beep(1000, 500)
+            speak("Timer done.")
+        threading.Thread(target=timer_done).start()
+        speak(f"Timer set for {sec} seconds.")
+    except Exception:
+        speak("Invalid time duration.")
+
+def tell_joke():
+    jokes = [
+        "Why did the tomato blush? Because it saw the salad dressing!",
+        "I told my computer I needed a break, and it said no problem — it needed one too.",
+        "Why don’t scientists trust atoms? Because they make up everything!",
+        "Why did the scarecrow win an award? Because he was outstanding in his field.",
+        "What do you call fake spaghetti? An impasta!",
+        "Why don’t skeletons fight each other? They don’t have the guts.",
+        "What did one ocean say to the other ocean? Nothing, they just waved.",
+        "Why did the math book look sad? Because it had too many problems.",
+        "How does a penguin build its house? Igloos it together.",
+        "Why did the bicycle fall over? Because it was two-tired.",
+        "What do you call cheese that isn’t yours? Nacho cheese!",
+        "Why can’t your nose be 12 inches long? Because then it would be a foot.",
+        "What do you call a factory that makes good products? A satisfactory.",
+        "What do you call a fish wearing a bowtie? Sofishticated.",
+        "Why don’t eggs tell jokes? They’d crack each other up.",
+        "Why can’t you give Elsa a balloon? Because she’ll let it go.",
+        "What do you get from a pampered cow? Spoiled milk.",
+        "Why did the golfer bring two pairs of pants? In case he got a hole in one.",
+        "What does a lemon say when it answers the phone? Yellow!",
+        "Why did the computer go to the doctor? Because it had a virus!",
+        "Why are elevator jokes so good? They work on many levels.",
+        "Why was the math lecture so long? The teacher kept going off on a tangent."
+
+    ]
+    speak(random.choice(jokes))
+
+def take_screenshot():
+    filename = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+    pyautogui.screenshot().save(filename)
+    speak(f"Screenshot saved as {filename}.")
+
+def image_search():
+    speak("Taking screenshot for Google image search.")
+    tmp = "temp.png"
+    pyautogui.screenshot().save(tmp)
+    opts = webdriver.ChromeOptions()
+    opts.add_argument('--headless')
+    driver = webdriver.Chrome(options=opts)
+    driver.get("https://images.google.com/")
+    time.sleep(1)
+    try:
+        driver.find_element(By.CSS_SELECTOR, 'input[type="file"]').send_keys(os.path.abspath(tmp))
+        speak("Image search completed.")
+    except Exception:
+        speak("Image search failed.")
+    driver.quit()
+
+def open_chatgpt():
+    url = "https://chat.openai.com/"
+    if CHROME:
+        subprocess.Popen([CHROME, "--profile-directory=Default", url])
+    else:
+        webbrowser.open(url)
+    speak("ChatGPT opened.")
+
+def open_gmail():
+    url = "https://mail.google.com/"
+    if CHROME:
+        subprocess.Popen([CHROME, "--profile-directory=Default", url])
+    else:
+        webbrowser.open(url)
+    speak("Gmail opened.")
+
+def open_youtube():
+    url = "https://www.youtube.com/"
+    if CHROME:
+        subprocess.Popen([CHROME, "--profile-directory=Default", url])
+    else:
+        webbrowser.open(url)
+    speak("YouTube opened.")
+
+def open_gmeet():
+    url = "https://meet.google.com/"
+    if CHROME:
+        subprocess.Popen([CHROME, "--profile-directory=Default", url])
+    else:
+        webbrowser.open(url)
+    speak("Google Meet opened.")
+
+def open_whatsapp():
+    path = "C:/Users/Public/AppData/Local/WhatsApp/WhatsApp.exe"
+    if os.path.exists(path):
+        os.startfile(path)
+        speak("WhatsApp opened.")
+    else:
+        subprocess.Popen(['powershell', 'start', 'shell:AppsFolder\\5319275A.WhatsAppDesktop_cv1g1gvanyjgm!App'])
+        speak("Trying Microsoft Store version of WhatsApp.")
+
+def open_visual_studio():
+    os.system("Visual Studio code")
+    speak("Visual Studio opened.")
+
+def open_camera():
+    os.system("start microsoft.windows.camera:")
+    speak("Camera opened.")
+
+def open_files():
+    pyautogui.hotkey('win', 'e')
+    speak("File Explorer opened.")
+def open_chrome():
+    chrome_paths = [
+        "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe",
+        f"C:/Users/{os.getlogin()}/AppData/Local/Google/Chrome/Application/chrome.exe"
+    ]    
+    for path in chrome_paths:
+        if os.path.exists(path):
+            webbrowser.get(f'"{path}" %s').open("https://www.google.com")
+               
+def open_memory():
+    path = "D:\memories"
+    if os.path.exists(path):
+        os.startfile(path)
+        speak("Memory folder opened.")
+    else:
+        speak("Memory folder not found.")
+
+def downloads():
+    path = "C:\Downloads"
+    if os.path.exists(path):
+        os.startfile(path)
+        speak("Downloads Opened")
+    else:
+        speak("Downloads not found")
+
+def switch_window():
+    pyautogui.hotkey('alt', 'tab')
+    speak("Switched window.")
+def minimize():
+    pyautogui.hotkey('win', 'd')
+    speak("Minimized all!")
+
+def micro():
+    speak("sure boss")
+    pyautogui.hotkey('win','h')
+    
+
+def switch_two_windows():
+    pyautogui.keyDown('alt')
+    pyautogui.press('tab')
+    pyautogui.press('tab')
+    pyautogui.keyUp('alt')
+    speak("Switched two windows.")
+
+def close_app(app_name):
+    name_lower = app_name.lower()
+    if 'notepad' in name_lower:
+        windows = gw.getWindowsWithTitle('Notepad')
+        for w in windows:
+            try:
+                w.activate()
+                time.sleep(0.2)
+                pyautogui.hotkey('ctrl', 's')
+                time.sleep(0.2)
+                w.close()
+            except Exception:
+                pass
+        speak("Saved and closed all Notepad windows.")
+        return
+    closed = False
+    for proc in psutil.process_iter(['name', 'pid']):
+        if name_lower in proc.info['name'].lower():
+            proc.terminate()
+            closed = True
+    speak(f"{'Closed' if closed else 'No running'} {app_name} instances.")
+
+def close_current_window():
+    pyautogui.hotkey('alt', 'f4')
+    speak("Closed current window.")
+
+def shutdown():
+        speak('bye boss, See you soon')
+        speak("shutting windows down")
+        pyautogui.hotkey('win', 'x')
+        time.sleep(1)
+        pyautogui.hotkey('u')
+        pyautogui.hotkey('u')
+
+def shut():
+    speak("Do you want to Restart or shut down")
+    rs= listen()
+    if( rs.lower() == 'restart' ):
+            speak("R u sure")
+            alert = listen()
+            if alert == 'potato':
+                speak('bye boss, See you soon')
+                speak("Restarting you pc")
+                pyautogui.hotkey('win', 'x')
+                pyautogui.hotkey('u')
+                pyautogui.hotkey('r')
+    elif( rs.lower() == 'shut down' or rs.lower() == 'shutdown'):
+        speak("R u sure")
+        alert = listen()
+        if alert == 'potato':
+            speak('bye boss, See you soon')
+            speak("shutting windows down")
+            pyautogui.hotkey('win', 'x')
+            pyautogui.hotkey('u')
+            pyautogui.hotkey('u')
+    else:
+        return
+
+def exit_all():
+    speak("Goodbye boss.")
+    exit()
+
+    # Add event handlers
+
+
+# Add recording control functions
+def start_tracking():
+    global recording, recording_start_time, recorded_events, initial_recording_position
+    recording = True
+    recorded_events = []
+    recording_start_time = time.time()
+    initial_recording_position = get_physical_pos()
+    speak("Started tracking your actions")
+
+def stop_tracking():
+    global recording
+    recording = False
+    with open(record_file, 'w') as f:
+        json.dump({
+            'initial_position': initial_recording_position,
+            'events': recorded_events
+        }, f, indent=2)
+    speak(f"Tracking stopped and saved to {record_file}")
+
+def execute_tracking():
+    global executing
+    executing = True
+    speak("Executing recorded actions")
+    
+    try:
+        with open(record_file, 'r') as f:
+            data = json.load(f)
+            initial_pos = tuple(data['initial_position'])
+            events = data['events']
+    except Exception as e:
+        speak(f"Failed to load recording: {str(e)}")
+        return
+
+    mouse_controller = mouse.Controller()
+    keyboard_controller = KeyboardController()
+    
+    try:
+        mouse_controller.position = initial_pos
+    except Exception as e:
+        speak("Need administrator rights for precise control")
+        return
+
+    start_time = time.time()
+    
+    for event in events:
+        if not executing:
+            break
+        
+        elapsed = time.time() - start_time
+        sleep_time = event['time'] - elapsed
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+
+        try:
+            if event['type'] == 'move':
+                mouse_controller.position = event['position']
+            elif event['type'] == 'click':
+                btn = mouse.Button[event['button'].split('.')[1]]
+                if event['pressed']:
+                    mouse_controller.press(btn)
+                else:
+                    mouse_controller.release(btn)
+            elif event['type'] == 'scroll':
+                mouse_controller.scroll(event['dx'], event['dy'])
+            elif event['type'] == 'key_press':
+                key = dict_to_key(event['key'])
+                if key:
+                    keyboard_controller.press(key)
+            elif event['type'] == 'key_release':
+                key = dict_to_key(event['key'])
+                if key:
+                    keyboard_controller.release(key)
+        except Exception as e:
+            speak(f"Execution error: {str(e)}")
+            break
+    
+    executing = False
+    speak("Execution completed")
+
+def stop_execution():
+    global executing
+    executing = False
+    speak("Stopped execution")
+
+
+def new_tab():
+    pyautogui.hotkey('ctrl','t')
+    speak("new tab")
+    
+def close_tab():
+    pyautogui.hotkey('ctrl','w')
+    speak("tab closed")
+
+def select_that():
+    pyautogui.hotkey('ctrl','shift','left')
+
+def select_all():
+    pyautogui.hotkey('ctrl','a')
+
+
+# Command dictionary
+COMMANDS = {
+    'notepad': open_notepad,
+    'command prompt': open_cmd,
+    'calculator': open_calc,
+    'time': report_time,
+    'date': report_date,
+    'browser': open_browser,
+    'search google': search_google,
+    'weather': weather,
+    'wikipedia': wiki_search,
+    'define': define_word,
+    'calculate': calculate,
+    'copy that': copy_that,
+    'copy last':copy_last,
+    'potato': paste,
+    'open file': open_file,
+    'cpu usage': cpu_usage,
+    'disk space': disk_space,
+    'set timer': set_timer,
+    'tell me a joke': tell_joke,
+    'screenshot': take_screenshot,
+    'scan screen': image_search,
+    'open chatgpt': open_chatgpt,
+    'open chat gpt': open_chatgpt,
+    'open gmail': open_gmail,
+    'open youtube': open_youtube,
+    'open gmeet': open_gmeet,
+    'open whatsapp': open_whatsapp,
+    'open visual studio': open_visual_studio,
+    'open camera': open_camera,
+    'open files': open_files,
+    'open memory': open_memory,
+    'open chrome': open_chrome,
+    'switch window': switch_window, 
+    'switch to windows': switch_two_windows,
+    'help': show_commands,
+    'commands': show_commands,
+    'typing': start_typing,
+    'micro': micro,
+    'go back': go_back,
+    # New Gemini commands
+    'gemini': start_gemini,
+    'chat mode': start_gemini,
+    'ai mode': start_gemini,
+    'minimise': minimize,
+    'open downloads': downloads,
+    'escape': escape,
+    'enter': enter,
+    'constantinople': shut,
+    'track me': start_tracking,
+    'stop tracking': stop_tracking,
+    'execute': execute_tracking,
+    'stop execution': stop_execution,
+    'emergency shutdown cap in a drip':shutdown,
+    'come tab': new_tab,
+    'new tab': new_tab,
+    'go tab': close_tab,
+    'select that':select_that,
+    'select all':select_all,
+
+}
+
+# Main execution loop
+if __name__ == '__main__':
+    with mic as src:
+        recognizer.adjust_for_ambient_noise(src, duration=1)
+        speak("hello boss, this is friday at your service")
+    while True:
+        trig = listen()
+        if 'hey friday' in trig or trig == 'friday':
+            speak("Yes boss?")
+            while True:
+                cmd = listen()
+                if not cmd:
+                    continue
+                if any(x in cmd for x in ['bye friday', 'exit', 'shut down', 'terminate', 'quit']):
+                    exit_all()
+                if cmd.startswith('close '):
+                    target = cmd.split('close ', 1)[1].strip()
+                    if target == 'this':
+                        close_current_window()
+                    else:
+                        close_app(target)
+                    continue
+                handled = False
+                exit_inner = False
+                for k, f in COMMANDS.items():
+                    if k in cmd:
+                        if k in ['typing', 'gemini', 'chat mode', 'ai mode']:
+                            exit_inner = f()
+                        else:
+                            f()
+                        handled = True
+                        if k == 'go back':
+                            exit_inner = True
+                        break
+                if exit_inner:
+                    break
+                if not handled:
+                    unrecognized()
+# Auto-saved at 2025-05-26 23:13:38
+# Auto-saved at 2025-05-26 23:48:16
+# Auto-saved at 2025-05-26 23:52:18
+# Auto-saved at 2025-05-27 00:04:14

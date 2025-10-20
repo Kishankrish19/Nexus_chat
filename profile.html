@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cyberpunk-neon">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile - ConnectSphere</title>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        :root {
+            --ease-1: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --ease-2: cubic-bezier(0.215, 0.610, 0.355, 1.000);
+            --transition-speed: 0.4s;
+        }
+
+        /* --- 8 UNIQUE THEMES --- */
+        [data-theme="cyberpunk-neon"] { --bg: #0d0221; --card-bg: rgba(26, 12, 51, 0.3); --card-border: rgba(240, 50, 255, 0.2); --card-glow: rgba(0, 255, 255, 0.1); --text: #e0e1ff; --text-muted: #a39fc4; --accent: #f0f; --accent-glow: rgba(255, 0, 255, 0.25); --btn-bg: linear-gradient(135deg, #f0f 0%, #0ff 100%); --btn-text: #0d0221; --btn-shadow: rgba(0, 255, 255, 0.4); }
+        [data-theme="solaris-orange"] { --bg: linear-gradient(to bottom right, #ffecd2, #fcb69f); --card-bg: rgba(255, 255, 255, 0.35); --card-border: rgba(255, 255, 255, 0.6); --card-glow: rgba(255, 140, 66, 0.2); --text: #5c3c31; --text-muted: #8a6a5f; --accent: #ff8c42; --accent-glow: rgba(255, 140, 66, 0.3); --btn-bg: linear-gradient(135deg, #ff8c42 0%, #ff5c5c 100%); --btn-text: #ffffff; --btn-shadow: rgba(255, 92, 92, 0.5); }
+        [data-theme="emerald-grove"] { --bg: linear-gradient(to top left, #0f2027, #203a43, #2c5364); --card-bg: rgba(20, 40, 45, 0.5); --card-border: rgba(218, 165, 32, 0.2); --card-glow: rgba(218, 165, 32, 0.1); --text: #e8e8e8; --text-muted: #b0b0b0; --accent: #daa520; --accent-glow: rgba(218, 165, 32, 0.25); --btn-bg: linear-gradient(135deg, #daa520 0%, #b8860b 100%); --btn-text: #0f2027; --btn-shadow: rgba(218, 165, 32, 0.4); }
+        [data-theme="aquawave"] { --bg: linear-gradient(120deg, #1cb5e0 0%, #000851 100%); --card-bg: rgba(255, 255, 255, 0.1); --card-border: rgba(255, 255, 255, 0.2); --card-glow: rgba(28, 181, 224, 0.15); --text: #ffffff; --text-muted: #c0d5e0; --accent: #1de2d3; --accent-glow: rgba(29, 226, 211, 0.3); --btn-bg: linear-gradient(135deg, #1de2d3 0%, #1cb5e0 100%); --btn-text: #000851; --btn-shadow: rgba(29, 226, 211, 0.4); }
+        [data-theme="rose-quartz"] { --bg: #f7f0f5; --card-bg: rgba(255, 255, 255, 0.6); --card-border: rgba(230, 164, 180, 0.4); --card-glow: rgba(230, 164, 180, 0.2); --text: #5c3a47; --text-muted: #8c737c; --accent: #e6a4b4; --accent-glow: rgba(230, 164, 180, 0.4); --btn-bg: linear-gradient(135deg, #e6a4b4 0%, #d18ca3 100%); --btn-text: #ffffff; --btn-shadow: rgba(209, 140, 163, 0.5); }
+        [data-theme="crimson-noir"] { --bg: radial-gradient(circle, #414141, #1d1d1d); --card-bg: rgba(10, 0, 0, 0.3); --card-border: rgba(220, 20, 60, 0.2); --card-glow: rgba(220, 20, 60, 0.15); --text: #f5f5f5; --text-muted: #a1a1a1; --accent: #dc143c; --accent-glow: rgba(220, 20, 60, 0.3); --btn-bg: linear-gradient(135deg, #dc143c 0%, #b22222 100%); --btn-text: #ffffff; --btn-shadow: rgba(220, 20, 60, 0.4); }
+        [data-theme="cosmic-latte"] { --bg: url('https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?q=80&w=2071&auto=format&fit=crop') no-repeat center center / cover; --card-bg: rgba(15, 15, 25, 0.2); --card-border: rgba(255, 255, 255, 0.2); --card-glow: rgba(192, 132, 252, 0.1); --text: #f0eefc; --text-muted: #a097b8; --accent: #c084fc; --accent-glow: rgba(192, 132, 252, 0.25); --btn-bg: linear-gradient(135deg, #c084fc 0%, #818cf8 100%); --btn-text: #110d1f; --btn-shadow: rgba(192, 132, 252, 0.4); }
+        [data-theme="oled-black"] { --bg: #000000; --card-bg: rgba(5, 5, 5, 0.25); --card-border: rgba(255, 255, 255, 0.1); --card-glow: rgba(168, 85, 247, 0.1); --text: #e0e0e0; --text-muted: #888888; --accent: #a855f7; --accent-glow: rgba(168, 85, 247, 0.2); --btn-bg: linear-gradient(135deg, #a855f7 0%, #6366f1 100%); --btn-text: #ffffff; --btn-shadow: rgba(100, 100, 255, 0.4); }
+        
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            display: grid;
+            place-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            transition: background var(--transition-speed) var(--ease-2);
+        }
+
+        .profile-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 2.5rem 3rem;
+            border-radius: 24px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            backdrop-filter: blur(25px) saturate(150%);
+            box-shadow: 0 16px 40px var(--card-glow);
+        }
+
+        .profile-header { text-align: center; margin-bottom: 2rem; }
+        .profile-header h1 { font-size: 2rem; font-weight: 800; }
+        .profile-header p { color: var(--text-muted); }
+
+        .profile-content { display: flex; flex-direction: column; gap: 2rem; }
+
+        .avatar-section { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+        .avatar-preview { width: 120px; height: 120px; border-radius: 50%; background-color: rgba(0,0,0,0.2); border: 2px dashed var(--card-border); display: grid; place-items: center; overflow: hidden; }
+        .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .avatar-preview .placeholder-icon { color: var(--text-muted); }
+
+        #upload-avatar-label {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--card-border);
+            color: var(--text);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #upload-avatar-label:hover { background: rgba(255,255,255,0.2); }
+        #avatar-upload { display: none; }
+
+        .details-section { display: flex; flex-direction: column; gap: 1.5rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group label { color: var(--text-muted); font-weight: 600; font-size: 0.9rem; }
+        .form-group .value, .form-group input, .form-group textarea {
+            background: rgba(0,0,0,0.1);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: var(--text);
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+        }
+        .form-group .value { color: var(--text-muted); }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+
+        .profile-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; }
+        #save-profile-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all .2s ease;
+            box-shadow: 0 6px 18px -4px var(--btn-shadow);
+        }
+        #save-profile-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+        .back-link { color: var(--accent); text-decoration: none; font-weight: 600; }
+        
+        #message-area { text-align: center; margin-top: 1rem; font-weight: 500; min-height: 1.25rem; }
+    </style>
+</head>
+<body>
+
+    <div class="profile-container">
+        <div class="profile-header">
+            <h1>Your Profile</h1>
+            <p>Update your photo and personal details.</p>
+        </div>
+
+        <div class="profile-content">
+            <div class="avatar-section">
+                <div class="avatar-preview" id="avatar-preview">
+                    <i data-feather="user" class="placeholder-icon" style="width: 48px; height: 48px;"></i>
+                </div>
+                <label for="avatar-upload" id="upload-avatar-label">Upload Photo</label>
+                <input type="file" id="avatar-upload" accept="image/*">
+            </div>
+
+            <div class="details-section">
+                <div class="form-group">
+                    <label>Your User ID</label>
+                    <div class="value" id="profile-user-id">your-unique-id</div>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <div class="value" id="profile-email">you@example.com</div>
+                </div>
+                <div class="form-group">
+                    <label for="name-input">Display Name</label>
+                    <input id="name-input" type="text" placeholder="Your display name">
+                </div>
+                <div class="form-group">
+                    <label for="bio-textarea">Your Bio</label>
+                    <textarea id="bio-textarea" placeholder="Tell everyone a little about yourself..."></textarea>
+                </div>
+            </div>
+        </div>
+        
+        <div id="message-area"></div>
+
+        <div class="profile-actions">
+            <a href="index.html" class="back-link">← Back to Chat</a>
+            <button id="save-profile-btn">Save Changes</button>
+        </div>
+    </div>
+
+    <script>
+        feather.replace();
+
+        // --- AUTH & CONFIG ---
+        const API_URL = 'http://127.0.0.1:5000';
+        const TOKEN = localStorage.getItem('authToken');
+        const MY_USER_ID = localStorage.getItem('userId');
+        const MY_EMAIL = localStorage.getItem('userEmail');
+        if (!TOKEN) { window.location.href = 'login.html'; }
+
+        // --- DOM ELEMENTS ---
+        const htmlEl = document.documentElement;
+        const avatarUpload = document.getElementById('avatar-upload');
+        const avatarPreview = document.getElementById('avatar-preview');
+        const profileUserId = document.getElementById('profile-user-id');
+        const profileEmail = document.getElementById('profile-email');
+        const nameInput = document.getElementById('name-input');
+        const bioTextarea = document.getElementById('bio-textarea');
+        const saveProfileBtn = document.getElementById('save-profile-btn');
+        const messageArea = document.getElementById('message-area');
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTheme = localStorage.getItem('theme') || 'cyberpunk-neon';
+            htmlEl.dataset.theme = savedTheme;
+            profileUserId.textContent = MY_USER_ID;
+            profileEmail.textContent = MY_EMAIL;
+            loadProfileData();
+        });
+
+        async function loadProfileData() {
+            try {
+                const response = await fetch(`${API_URL}/profile`, {
+                    headers: { 'Authorization': `Bearer ${TOKEN}` }
+                });
+                if (!response.ok) throw new Error('Could not load profile data.');
+
+                const data = await response.json();
+                nameInput.value = data.name || '';
+                bioTextarea.value = data.bio || '';
+                if (data.avatar && !data.avatar.endsWith('default.png')) {
+                    avatarPreview.innerHTML = `<img src="${data.avatar}" alt="Profile Preview">`;
+                }
+
+            } catch (error) {
+                console.error(error);
+                messageArea.textContent = error.message;
+                messageArea.style.color = '#f87171';
+            }
+        }
+        
+        // --- EVENT LISTENERS ---
+        avatarUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    avatarPreview.innerHTML = `<img src="${e.target.result}" alt="Profile Preview">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        saveProfileBtn.addEventListener('click', async () => {
+            messageArea.textContent = 'Saving...';
+            messageArea.style.color = 'var(--text)';
+
+            // --- FIX: Use FormData to properly upload file and text ---
+            const formData = new FormData();
+            formData.append('name', nameInput.value);
+            formData.append('bio', bioTextarea.value);
+
+            const avatarFile = avatarUpload.files[0];
+            if (avatarFile) {
+                formData.append('avatar', avatarFile);
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/profile`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN}`,
+                        // NOTE: When using FormData, the browser sets the 'Content-Type' header automatically.
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to save profile.');
+                }
+
+                messageArea.textContent = 'Profile saved successfully!';
+                messageArea.style.color = '#34d399';
+                setTimeout(() => { messageArea.textContent = ''; }, 2500);
+
+            } catch (error) {
+                console.error('Save profile error:', error);
+                messageArea.textContent = error.message;
+                messageArea.style.color = '#f87171';
+            }
+        });
+
+    </script>
+</body>
+</html>
